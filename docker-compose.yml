@@ -1,0 +1,35 @@
+version: "3.7"
+services:
+  bis:
+    image: didux/bis:latest
+    container_name: bis
+    build:
+      context: .
+    ports:
+      - '5000:5000'
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=mysecretpassword
+      - POSTGRES_DB=postgres
+      - POSTGRES_HOST=bisdb
+      - POSTGRES_PORT=5432
+    links:
+      - bisdb
+    depends_on:
+      - bisdb
+    restart: always
+  bisdb:
+    image: diduxio/pg512d:latest
+    container_name: bisdb
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=mysecretpassword
+      - POSTGRES_DB=postgres
+      - POSTGRES_HOST=bisdb
+      - POSTGRES_PORT=5432
+    volumes:
+      - bisdb-data:/var/lib/postgresql/data
+    restart: always
+volumes:
+  bisdb-data:
+    driver: local
