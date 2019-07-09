@@ -1,10 +1,20 @@
 #!/usr/bin/python3
-from flask import Flask, jsonify, abort, request
+from flask import Flask, jsonify, abort, request, url_for
 from utils.bisdb import BisDb
 from flask_restplus import fields, Api, Resource, cors
 
 app = Flask(__name__)
-api = Api(app, version='1.0', title='BIS API', description='A simple BIS API')
+
+
+class MyApi(Api):
+    @property
+    def specs_url(self):
+        """Monkey patch for HTTPS"""
+        scheme = 'http' if '5000' in self.base_url else 'https'
+        return url_for(self.endpoint('specs'), _external=True, _scheme=scheme)
+
+
+api = MyApi(app, version='1.0', title='BIS API', description='A simple BIS API')
 db = BisDb()
 
 single_vector = fields.Float
