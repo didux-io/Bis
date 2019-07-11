@@ -1,7 +1,7 @@
 version: "3.7"
 services:
   bis:
-    image: didux/bis:latest
+    image: diduxio/bis:test
     container_name: bis
     build:
       context: .
