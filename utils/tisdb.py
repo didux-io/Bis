@@ -70,15 +70,15 @@ class TisDb(object):
 
     def count(self):
         cursor = self.db.cursor()
-        sql = """SELECT count(*) FROM bis;"""
+        sql = """SELECT count(*) FROM tis;"""
 
         cursor.execute(sql)
         return cursor.fetchone()
 
-    def get_number(self, smartcontract):
+    def get_number(self, phonenumber):
         cursor = self.db.cursor()
-        sql = """SELECT smartcontract, phonenumber FROM tis WHERE smartcontract = %s"""
-        data = (smartcontract,)
+        sql = """SELECT smartcontract, phonenumber FROM tis WHERE phonenumber = %s"""
+        data = (phonenumber,)
 
         cursor.execute(sql, data)
         return cursor.fetchone()
