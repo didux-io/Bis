@@ -70,7 +70,7 @@ class TisDb(object):
 
     def count(self):
         cursor = self.db.cursor()
-        sql = """SELECT count(*) FROM bis;"""
+        sql = """SELECT count(*) FROM tis;"""
 
         cursor.execute(sql)
         return cursor.fetchone()
