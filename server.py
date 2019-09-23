@@ -16,17 +16,17 @@ add_request = api.model('Add request', {
                                    example='0612345678')
 })
 
-@api.route('/get/<smartcontract>')
+@api.route('/get/<phonenumber>')
 class GetNumber(Resource):
-    @api.response(200, 'Smartcontract found.')
-    @api.response(404, 'Smartcontract not found.')
+    @api.response(200, 'Phonenumber found.')
+    @api.response(404, 'Phonenumber not found.')
     @api.doc(id='get')
     @cors.crossdomain(origin='*', headers='Content-Type, Access-Control-Allow-Headers')
-    def get(self, smartcontract):
+    def get(self, phonenumber):
         """
-            Get number for a smartcontract.
+            Get the contract for a phone number.
         """
-        result = db.get_number(smartcontract)
+        result = db.get_number(phonenumber)
         if result:
             return jsonify(smartcontract=result[0], phonenumber=result[1])
         else:
@@ -90,7 +90,7 @@ class Count(Resource):
             return jsonify(), 500
 
 
-api.add_resource(GetNumber, '/get/<smartcontract>')  # Get address
+api.add_resource(GetNumber, '/get/<phonenumber>')  # Get address
 api.add_resource(AddNumber, '/add')  # Add address
 api.add_resource(DeleteNumber, '/delete/<smartcontract>')  # Delete address
 api.add_resource(Count, '/count')  # Search match

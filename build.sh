@@ -1,3 +1,3 @@
 #!/bin/sh
 
-docker build --no-cache -t diduxio/bis:test .
+docker build --no-cache -t diduxio/tis:test .
