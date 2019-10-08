@@ -18,6 +18,24 @@ services:
     depends_on:
       - bisdb
     restart: always
+  tis:
+    image: diduxio/tis:test
+    container_name: tis
+    build:
+      context: .
+    ports:
+      - '5001:5000'
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=mysecretpassword
+      - POSTGRES_DB=postgres
+      - POSTGRES_HOST=tisdb
+      - POSTGRES_PORT=5432
+    links:
+      - tisdb
+    depends_on:
+      - tisdb
+    restart: always
   bisdb:
     image: diduxio/pg512d:latest
     container_name: bisdb
@@ -32,6 +50,22 @@ services:
     restart: always
     ports:
       - 5432
+  tisdb:
+    image: diduxio/pg512d:latest
+    container_name: tisdb
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=mysecretpassword
+      - POSTGRES_DB=postgres
+      - POSTGRES_HOST=tisdb
+      - POSTGRES_PORT=5432
+    volumes:
+      - tisdb-data:/var/lib/postgresql/data
+    restart: always
+    ports:
+      - 5432
 volumes:
   bisdb-data:
+    driver: local
+  tisdb-data:
     driver: local
