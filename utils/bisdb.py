@@ -43,7 +43,7 @@ class BisDb(object):
         sql = """CREATE TABLE IF NOT EXISTS bis(
 				id SERIAL PRIMARY KEY,
 				smartcontract TEXT NOT NULL UNIQUE,
-				version INTEGER,
+				version CHAR,
 				face_vector cube NULL);"""
         cursor.execute(sql)
         self.db.commit()

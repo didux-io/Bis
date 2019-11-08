@@ -22,7 +22,7 @@ single_vector = fields.Float
 add_request = api.model('Add request', {
     'smartcontract': fields.String(required=True, description='The smartcontract address',
                                    example='0x644097FADEc1401F773D2407744006deEEa5C12c'),
-    'model_version': fields.Integer(required=True, description='Face Model version', example=1),
+    'model_version': fields.String(required=True, description='Face Model version', example=1),
     'vector': fields.List(single_vector, required=True, description='Face vectors',
                           example=[0.045072222, 0.04920785, -0.02904682, 0.03295613, -0.10173341, 0.061261676,
                                    -0.041644942, -0.011714032, -0.0007638014, 0.013426632, 0.078980684, -0.023040678,
@@ -224,7 +224,7 @@ class GetFace(Resource):
         """
         result = db.get_face(smartcontract)
         if result:
-            return jsonify(smartcontract=result[0], model_version=int(result[1]), vector=result[2])
+            return jsonify(smartcontract=result[0], model_version=result[1], vector=result[2])
         else:
             return jsonify(), 404
 
@@ -288,7 +288,7 @@ class SearchFace(Resource):
         result = db.find_match(content["vector"])
 
         if result:
-            response = jsonify(smartcontract=result[0], model_version=int(result[1]), distance=float(result[2]), confidence=distance_to_score(float(result[2])))
+            response = jsonify(smartcontract=result[0], model_version=result[1], distance=float(result[2]), confidence=distance_to_score(float(result[2])))
             return response
         else:
             return jsonify(), 404
