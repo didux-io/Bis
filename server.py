@@ -14,7 +14,7 @@ class MyApi(Api):
         return url_for(self.endpoint('specs'), _external=True, _scheme=scheme)
 
 
-api = MyApi(app, version='1.0', title='BIS API', description='A simple BIS API')
+api = MyApi(app, version='1.0', title='BIS API', description='A Multitenant BIS API')
 db = BisDb()
 
 single_vector = fields.Float
@@ -22,7 +22,10 @@ single_vector = fields.Float
 add_request = api.model('Add request', {
     'smartcontract': fields.String(required=True, description='The smartcontract address',
                                    example='0x644097FADEc1401F773D2407744006deEEa5C12c'),
-    'model_version': fields.String(required=True, description='Face Model version', example=1),
+    'organisation': fields.String(required=True, description='The organisation address',
+                                   example='0x91B5b9F3197db21AecA2050f68c5E2215f35365f'),
+    'model_name': fields.String(required=False, description='Face Model name', example="20FaceNet"),
+    'model_version': fields.String(required=False, description='Face Model version', example="1.0.0"),
     'vector': fields.List(single_vector, required=True, description='Face vectors',
                           example=[0.045072222, 0.04920785, -0.02904682, 0.03295613, -0.10173341, 0.061261676,
                                    -0.041644942, -0.011714032, -0.0007638014, 0.013426632, 0.078980684, -0.023040678,
@@ -112,6 +115,10 @@ add_request = api.model('Add request', {
 })
 
 search_request = api.model('Search request', {
+    'organisation': fields.String(required=True, description='The organisation address',
+                                  example='0x91B5b9F3197db21AecA2050f68c5E2215f35365f'),
+    'model_name': fields.String(required=True, description='Face Model name', example="20FaceNet"),
+    'model_version': fields.String(required=True, description='Face Model version', example="1.0.0"),
     'vector': fields.List(single_vector, required=True, description='Face vectors',
                           example=[0.065072222, 0.06920785, -0.02904682, 0.03295613, -0.10173341, 0.061261676,
                                    -0.041644942, -0.011714032, -0.0007638014, 0.013426632, 0.078980684, -0.023040678,
@@ -213,25 +220,29 @@ def distance_to_score(distance):
 
 
 @api.route('/get/<smartcontract>')
-class GetFace(Resource):
+class GetContract(Resource):
     @api.response(200, 'Smartcontract found.')
     @api.response(404, 'Smartcontract not found.')
     @api.doc(id='get')
     @cors.crossdomain(origin='*', headers='Content-Type, Access-Control-Allow-Headers')
     def get(self, smartcontract):
         """
-            Get biometrics for a smartcontract.
+            Get metadata for a smartcontract.
         """
-        result = db.get_face(smartcontract)
+        result = db.get_contract(smartcontract)
         if result:
-            return jsonify(smartcontract=result[0], model_version=result[1], vector=result[2])
+            return jsonify(smartcontract=result[0],
+                           organisation=result[1],
+                           model_name=result[2],
+                           model_version=result[3]
+                           )
         else:
             return jsonify(), 404
 
 
 @api.route('/delete/<smartcontract>')
-class DeleteFace(Resource):
-    @api.response(200, 'Face successful deleted.')
+class DeleteContract(Resource):
+    @api.response(200, 'Contract successful deleted.')
     @api.doc(id='delete')
     @cors.crossdomain(origin='*', headers='Content-Type, Access-Control-Allow-Headers')
     def delete(self, smartcontract):
@@ -239,14 +250,14 @@ class DeleteFace(Resource):
             Delete a record based on the smartcontract address.
         """
         print("Delete contract: ", smartcontract)
-        db.delete_face(smartcontract)
+        db.delete_contract(smartcontract)
         return jsonify(), 200
 
 
 @api.route('/add')
-class AddFace(Resource):
+class AddContract(Resource):
     @api.expect(add_request)
-    @api.response(200, 'Face successfully created.')
+    @api.response(200, 'Contract successfully created.')
     @api.response(400, 'Bad request.')
     @api.response(409, 'Conflict happened.')
     @api.doc(id='add')
@@ -258,10 +269,12 @@ class AddFace(Resource):
         if not request.get_json():
             abort(400)
         content = request.get_json(force=True)
-        vector = content["vector"]
         smartcontract = content["smartcontract"]
+        organisation = content["organisation"]
+        model_name = content["model_name"]
         model_version = content["model_version"]
-        result = db.add_face(smartcontract, model_version, vector)
+        vector = content["vector"]
+        result = db.add_contract(smartcontract, organisation, model_name, model_version, vector)
 
         if result == 0:
             return jsonify(), 200
@@ -270,25 +283,25 @@ class AddFace(Resource):
 
 
 @api.route('/search')
-class SearchFace(Resource):
+class SearchContract(Resource):
 
     @api.expect(search_request)
-    @api.response(200, 'Face matched.')
+    @api.response(200, 'Contract matched.')
     @api.response(400, 'Bad request.')
     @api.response(404, 'No match found.')
     @api.doc(id='search')
     @cors.crossdomain(origin='*', headers='Content-Type, Access-Control-Allow-Headers')
     def post(self):
         """
-            Search a smartcontract based on biometrics.
+            Search a smartcontract based on vector, organisation, model_name and model_version.
         """
         if not request.get_json():
             abort(400)
         content = request.get_json()
-        result = db.find_match(content["vector"])
+        result = db.find_match(content["vector"], content["organisation"], content["model_name"], content["model_version"],)
 
         if result:
-            response = jsonify(smartcontract=result[0], model_version=result[1], distance=float(result[2]), confidence=distance_to_score(float(result[2])))
+            response = jsonify(smartcontract=result[0], organisation=result[1], model_name=result[2], model_version=result[3], distance=float(result[4]), confidence=distance_to_score(float(result[4])))
             return response
         else:
             return jsonify(), 404
@@ -320,10 +333,10 @@ class Count(Resource):
             return jsonify(), 500
 
 
-api.add_resource(GetFace, '/get/<smartcontract>')  # Get address
-api.add_resource(AddFace, '/add')  # Add address
-api.add_resource(DeleteFace, '/delete/<smartcontract>')  # Delete address
-api.add_resource(SearchFace, '/search')  # Search match
+api.add_resource(GetContract, '/get/<smartcontract>')  # Get address
+api.add_resource(AddContract, '/add')  # Add address
+api.add_resource(DeleteContract, '/delete/<smartcontract>')  # Delete address
+api.add_resource(SearchContract, '/search')  # Search match
 api.add_resource(Count, '/count')  # Search match
 
 if __name__ == '__main__':

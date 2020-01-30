@@ -5,7 +5,7 @@ import multiprocessing
 logger = multiprocessing.get_logger()
 recognition_quality = 1
 
-#  docker run --name postgres --rm -h postgres -e POSTGRES_PASSWORD=mysecretpassword -p 5432:5432 -d oelmekki/pg350d:9.6
+#  docker run --name postgres --rm -h postgres -e POSTGRES_PASSWORD=mysecretpassword -p 5432:5432 -d diduxio/pg512d:latest
 db_name = os.getenv('POSTGRES_DB', 'postgres')
 db_user = os.getenv('POSTGRES_USER', 'postgres')
 db_password = os.getenv('POSTGRES_PASSWORD', 'mysecretpassword')
@@ -43,8 +43,12 @@ class BisDb(object):
         sql = """CREATE TABLE IF NOT EXISTS bis(
 				id SERIAL PRIMARY KEY,
 				smartcontract TEXT NOT NULL UNIQUE,
-				version CHAR,
-				face_vector cube NULL);"""
+				organisation TEXT NOT NULL,
+				model_name VARCHAR(16),
+				model_version VARCHAR(8),
+				face_vector cube NULL);
+                CREATE INDEX IF NOT EXISTS bis_organisation_index ON bis(organisation, model_name, model_version);
+                """
         cursor.execute(sql)
         self.db.commit()
         logger.info('BIS initialized')
@@ -52,17 +56,17 @@ class BisDb(object):
     def __del__(self):
         self.db.close()
 
-    def add_face(self, smartcontract, version, face_vector):
+    def add_contract(self, smartcontract, organisation, model_name, model_version, face_vector):
         cursor = self.db.cursor()
-        sql = """INSERT INTO bis(smartcontract, version, face_vector) VALUES (%s, %s, CUBE(array[{}]))
-            ON CONFLICT(smartcontract) DO UPDATE SET (version, face_vector) = (EXCLUDED.version, EXCLUDED.face_vector);""".format(
+        sql = """INSERT INTO bis(smartcontract, organisation, model_name, model_version, face_vector) VALUES (%s, %s, %s, %s, CUBE(array[{}]))
+            ON CONFLICT(smartcontract) DO UPDATE SET (organisation, model_name, model_version, face_vector) = (EXCLUDED.organisation, EXCLUDED.model_name, EXCLUDED.model_version, EXCLUDED.face_vector);""".format(
             ','.join(str(s) for s in face_vector))
-        data = (smartcontract, version,)
+        data = (smartcontract, organisation, model_name, model_version,)
         try:
             cursor.execute(sql, data)
             self.db.commit()
         except Exception as e:
-            logger.error('error adding face to database: {0}'.format(e))
+            logger.error('error adding contract to database: {0}'.format(e))
             self.db.rollback()
             return -1
         if cursor.rowcount == 1:
@@ -70,7 +74,7 @@ class BisDb(object):
         else:
             return 1
 
-    def delete_face(self, smartcontract):
+    def delete_contract(self, smartcontract):
         cursor = self.db.cursor()
         sql = """DELETE FROM bis WHERE smartcontract = %s"""
         data = (smartcontract,)
@@ -89,23 +93,32 @@ class BisDb(object):
         cursor.execute(sql)
         return cursor.fetchone()
 
-    def get_face(self, smartcontract):
+    def countByOrganisaton(self, organisation):
         cursor = self.db.cursor()
-        sql = """SELECT smartcontract, version, face_vector FROM bis WHERE smartcontract = %s"""
+        sql = """SELECT count(*) FROM bis WHERE organisation = %s;"""
+        data = organisation
+
+        cursor.execute(sql, data)
+        return cursor.fetchone()
+
+    def get_contract(self, smartcontract):
+        cursor = self.db.cursor()
+        sql = """SELECT smartcontract, organisation, model_name, model_version FROM bis WHERE smartcontract = %s"""
         data = (smartcontract,)
 
         cursor.execute(sql, data)
         return cursor.fetchone()
 
-    def find_match(self, face_vector):
+    def find_match(self, face_vector, organisation, model_name, model_version):
         cursor = self.db.cursor()
-        sql = """SELECT smartcontract, version, sqrt(power(CUBE(array[{0}]) <-> face_vector, 10))
-        			FROM bis WHERE sqrt(power(CUBE(array[{0}]) <-> face_vector, 10)) <= {1}""" \
+        sql = """SELECT smartcontract, organisation, model_name, model_version, sqrt(power(CUBE(array[{0}]) <-> face_vector, 10))
+        			FROM bis WHERE organisation = %s AND model_name = %s AND model_version = %s AND sqrt(power(CUBE(array[{0}]) <-> face_vector, 10)) <= {1}""" \
                   .format(','.join(str(s) for s in face_vector), recognition_quality) + \
               """ ORDER BY sqrt(power(CUBE(array[{0}]) <-> face_vector, 10)) ASC LIMIT 1""" \
                   .format(','.join(str(s) for s in face_vector))
+        data = (organisation, model_name, model_version,)
 
-        cursor.execute(sql)
+        cursor.execute(sql, data)
         all_rows = cursor.fetchall()
         if all_rows:
             return all_rows[0]
