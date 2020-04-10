@@ -1,3 +1,4 @@
 flask
 psycopg2-binary
 flask-restplus
+Werkzeug==0.16.0

@@ -2,10 +2,12 @@
 from flask import Flask, jsonify, abort, request
 from utils.tisdb import TisDb
 from flask_restplus import fields, Api, Resource, cors
+import multiprocessing
 
 app = Flask(__name__)
 api = Api(app, version='1.0', title='TIS API', description='A simple TIS API')
 db = TisDb()
+logger = multiprocessing.get_logger()
 
 single_vector = fields.String
 
@@ -64,7 +66,23 @@ class AddNumber(Resource):
         content = request.get_json(force=True)
         phonenumber = content["phonenumber"]
         smartcontract = content["smartcontract"]
-        result = db.add_number(smartcontract, phonenumber)
+
+        number_exists = db.get_number(phonenumber)
+        contract_exists = db.get_smartcontract(smartcontract)
+        result = 124
+
+        if number_exists and contract_exists:
+            logger.error('Number and contract already exists')
+            return jsonify(), 200
+
+        if number_exists:
+            result = db.add_contract(smartcontract, phonenumber)
+
+        if contract_exists:
+            result = db.add_number(smartcontract, phonenumber)
+
+        if not number_exists and not contract_exists:
+            result = db.add_contract(smartcontract, phonenumber)
 
         if result == 0:
             return jsonify(), 200

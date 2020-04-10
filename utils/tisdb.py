@@ -29,7 +29,7 @@ class TisDb(object):
         sql = """CREATE TABLE IF NOT EXISTS tis(
 				id SERIAL PRIMARY KEY,
 				smartcontract TEXT NOT NULL UNIQUE,
-				phonenumber TEXT NOT NULL);"""
+				phonenumber TEXT NOT NULL UNIQUE);"""
         cursor.execute(sql)
         self.db.commit()
         logger.info('TIS initialized')
@@ -48,7 +48,26 @@ class TisDb(object):
             cursor.execute(sql, data)
             self.db.commit()
         except Exception as e:
-            logger.error('error adding face to database: {0}'.format(e))
+            logger.error('error adding tis to database: {0}'.format(e))
+            self.db.rollback()
+            return -1
+        if cursor.rowcount == 1:
+            return 0
+        else:
+            return 1
+
+    def add_contract(self, smartcontract, phonenumber):
+        cursor = self.db.cursor()
+        print(smartcontract)
+        print(phonenumber)
+        sql = """INSERT INTO tis(smartcontract, phonenumber) VALUES (%s, %s)
+            ON CONFLICT(phonenumber) DO UPDATE SET smartcontract = EXCLUDED.smartcontract;"""
+        data = (smartcontract, phonenumber,)
+        try:
+            cursor.execute(sql, data)
+            self.db.commit()
+        except Exception as e:
+            logger.error('error adding tis to database: {0}'.format(e))
             self.db.rollback()
             return -1
         if cursor.rowcount == 1:
@@ -79,6 +98,14 @@ class TisDb(object):
         cursor = self.db.cursor()
         sql = """SELECT smartcontract, phonenumber FROM tis WHERE phonenumber = %s"""
         data = (phonenumber,)
+
+        cursor.execute(sql, data)
+        return cursor.fetchone()
+
+    def get_smartcontract(self, smartcontract):
+        cursor = self.db.cursor()
+        sql = """SELECT smartcontract, phonenumber FROM tis WHERE smartcontract = %s"""
+        data = (smartcontract,)
 
         cursor.execute(sql, data)
         return cursor.fetchone()

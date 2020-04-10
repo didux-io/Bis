@@ -1,7 +1,7 @@
-FROM alpine:3.8
+FROM python:3.7.6-alpine3.10
 
 # Setup python3 (add numpy here too, else opencv install issues)
-RUN apk add --no-cache python3 python3-dev gcc musl-dev postgresql-dev && \
+RUN apk add --no-cache build-base python3 py3-setuptools python3-dev gcc musl-dev postgresql-dev && \
     python3 -m ensurepip && \
     rm -r /usr/lib/python*/ensurepip && \
     pip3 install --upgrade pip setuptools && \
@@ -9,6 +9,8 @@ RUN apk add --no-cache python3 python3-dev gcc musl-dev postgresql-dev && \
     if [[ ! -e /usr/bin/python ]]; then ln -sf /usr/bin/python3 /usr/bin/python; fi && \
     rm -r /root/.cache
 
+ENV LIBRARY_PATH=/lib:/usr/lib
+#ENV APP_ENV=production
 # Install other requirements
 RUN pip3 install --upgrade pip
 
